@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ctdk/goas/v2/logger"
+	"github.com/golang/groupcache"
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/raintank/raintank-metric/setting"
-	"gopkg.in/redis.v2"
 	"reflect"
 	"strconv"
 	"sync"
@@ -237,17 +237,38 @@ func InitElasticsearch() error {
 	return nil
 }
 
-var rs *redis.Client
+var gc *groupcache.Group
 
-func InitRedis() error {
-	opts := &redis.Options{}
-	opts.Network = "tcp"
-	opts.Addr = setting.Config.RedisAddr
-	if setting.Config.RedisPasswd != "" {
-		opts.Password = setting.Config.RedisPasswd
+// GroupCacheAddr
+// GroupCachePeers
+// GroupCacheName
+// GroupCacheMaxSize
+// GroupCacheExpiration
+
+func InitGroupcache() error {
+	peers := groupcache.NewHTTPPool(setting.Config.GroupCacheAddr)
+	if setting.Config.GroupCachePeers != nil && len(setting.Config.GroupCachePeers) > 0 {
+		peers.Set(setting.Config.GroupCachePeers...)
 	}
-	opts.DB = setting.Config.RedisDB
-	rs = redis.NewClient(opts)
+	gc = groupcache.NewGroup(setting.Config.GroupCacheName, setting.Config.GroupCacheMaxSize << 20, groupcache.GetterFunc(
+		func(ctx groupcache.Context, key string, dest groupcache.Sink) error {
+			res, err := es.Get("definitions", "metric", key, nil)
+			logger.Debugf("GROUPCACHE: getting definition from elasticsearch: %+v", res)
+			if err != nil {
+				return err
+			}
+			logger.Debugf("GROUPCACHE: %s get returned %q", key, res.Source)
+			def, err := DefFromJSON(*res.Source)
+			if err != nil {
+				return nil
+			}
+			j, err := json.Marshal(def)
+			if err != nil {
+				return err
+			}
+			dest.SetBytes(j)
+			return nil
+		}))
 
 	return nil
 }
@@ -361,32 +382,28 @@ func (m *MetricDefinition) indexMetric() error {
 }
 
 func GetMetricDefinition(id string) (*MetricDefinition, error) {
-	// TODO: fetch from redis before checking elasticsearch
-	if v, err := rs.Get(id).Result(); err != nil && err != redis.Nil {
-		logger.Errorf("the redis client bombed: %s", err.Error())
-		return nil, err
-	} else if err == nil {
-		logger.Debugf("json for %s found in elasticsearch: %s", id)
-		def, err := DefFromJSON([]byte(v))
-		if err != nil {
-			return nil, err
-		}
-		return def, nil
-	}
+	var cached []byte
+	t := time.Now().Unix()
 
-	logger.Debugf("getting %s from elasticsearch", id)
-	res, err := es.Get("definitions", "metric", id, nil)
-	logger.Debugf("res is: %+v", res)
+	// Some explanation is in order - groupcache does not, for whatever
+	// reason, provide a way to remove items from the cache. There are
+	// apparently performance considerations with that that make it best
+	// avoided. The next best thing I could find was to add the time to the
+	// key. Since we'd like to have these definitions expire, we add the
+	// current unix time - (current unix time % expiration interval) to the
+	// groupcache key. This isn't entirely ideal, because the expiration
+	// time could be much less than we expect, but it should do (and would
+	// in all likelihood be set correctly soon after).
+	exp := t - (t % setting.Config.GroupCacheExpiration)
+	key := fmt.Sprintf("%s-%d", id, exp)
+
+	err := gc.Get(nil, key, groupcache.AllocatingByteSliceSink(&cached))
 	if err != nil {
 		return nil, err
 	}
-	logger.Debugf("get returned %q", res.Source)
-	logger.Debugf("placing %s into redis", id)
-	if rerr := rs.SetEx(id, time.Duration(300)*time.Second, string(*res.Source)).Err(); err != nil {
-		logger.Debugf("redis err: %s", rerr.Error())
-	}
-
-	def, err := DefFromJSON(*res.Source)
+	
+	def := new(MetricDefinition)
+	err = json.Unmarshal(cached, &def)
 	if err != nil {
 		return nil, err
 	}

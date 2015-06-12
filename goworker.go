@@ -59,7 +59,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	err = metricdef.InitRedis()
+	err = metricdef.InitGroupcache()
 	if err != nil {
 		panic(err)
 	}

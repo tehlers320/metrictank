@@ -38,9 +38,12 @@ type Conf struct {
 	ElasticsearchPort   int    `toml:"elasticsearch-port"`
 	ElasticsearchUser   string `toml:"elasticsearch-user"`
 	ElasticsearchPasswd string `toml:"elasticsearch-passwd"`
-	RedisAddr           string `toml:"redis-addr"`
-	RedisPasswd         string `toml:"redis-passwd"`
-	RedisDB             int64  `toml:"redis-db"`
+	GroupCacheAddr string `toml:"groupcache-addr"`
+	GroupCacheName string `toml:"groupcache-name"`
+	GroupCachePeers []string
+	GroupCachePeerStr string `toml:"groupcache-peers"`
+	GroupCacheMaxSize int64 `toml:"groupcache-maxsize"`
+	GroupCacheExpiration int64 `toml:"groupcache-expiration"`
 	LogLevel            string `toml:"log-level"`
 	LogFile             string `toml:"log-file"`
 	SysLog              bool   `toml:"syslog"`
@@ -65,11 +68,13 @@ type options struct {
 	ElasticsearchPort   int    `short:"t" long:"elasticsearch-port" description:"Port to connect to for Elasticsearch, defaults to 9200."`
 	ElasticsearchUser   string `short:"u" long:"elasticsearch-user" description:"Optional username to use when connecting to elasticsearch."`
 	ElasticsearchPasswd string `short:"P" long:"elasticsearch-passwd" description:"Optional password to use when connecting to elasticsearch."`
-	RedisAddr           string `short:"r" long:"redis-addr" description:"Hostname or IP address of redis server."`
-	RedisPasswd         string `short:"y" long:"redis-passwd" description:"Optional password to use when connecting to redis."`
-	RedisDB             int64  `short:"D" long:"redis-db" description:"Option database number to use when connecting to redis."`
 	RabbitMQURL         string `short:"q" long:"rabbitmq-url" description:"RabbitMQ server URL."`
 	NumWorkers          int    `short:"w" long:"num-workers" description:"Number of workers to launch. Defaults to the number of CPUs on the system."`
+	GroupCacheAddr string `long:"groupcache-addr" description:"Address to advertise our presence on groupcache (like 'http://1.2.3.4:7888'"`
+	GroupCacheName string `long:"groupcache-name" description:"The name to identify our groupcache cluster."`
+	GroupCachePeerStr string `long:"groupcache-peers" description:"Comma separated list of addresses that are our groupcache peers."`
+	GroupCacheMaxSize int64 `long:"groupcache-maxsize" description:"Max size, in megabytes, of an item stored in groupcache."`
+	GroupCacheExpiration int64 `long:"groupcache-expiration" description: "Time in seconds before an item in groupcache becomes invalid."`
 }
 
 var Config *Conf
@@ -176,15 +181,9 @@ func parseConfig() error {
 	if opts.ElasticsearchPasswd != "" {
 		Config.ElasticsearchPasswd = opts.ElasticsearchPasswd
 	}
-	if opts.RedisAddr != "" {
-		Config.RedisAddr = opts.RedisAddr
-	}
-	if opts.RedisPasswd != "" {
-		Config.RedisPasswd = opts.RedisPasswd
-	}
-	if opts.RedisDB != 0 {
-		Config.RedisDB = opts.RedisDB
-	}
+
+	// GC GOES HERE
+
 	if opts.NumWorkers != 0 {
 		Config.NumWorkers = opts.NumWorkers
 	}
@@ -200,9 +199,6 @@ func parseConfig() error {
 	}
 	if Config.ElasticsearchDomain == "" {
 		Config.ElasticsearchDomain = "localhost"
-	}
-	if Config.RedisAddr == "" {
-		Config.RedisAddr = "localhost"
 	}
 
 	logger.Debugf("Configuration: %q", Config)
