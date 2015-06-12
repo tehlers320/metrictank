@@ -74,7 +74,7 @@ type options struct {
 	GroupCacheName string `long:"groupcache-name" description:"The name to identify our groupcache cluster."`
 	GroupCachePeerStr string `long:"groupcache-peers" description:"Comma separated list of addresses that are our groupcache peers."`
 	GroupCacheMaxSize int64 `long:"groupcache-maxsize" description:"Max size, in megabytes, of an item stored in groupcache."`
-	GroupCacheExpiration int64 `long:"groupcache-expiration" description: "Time in seconds before an item in groupcache becomes invalid."`
+	GroupCacheExpiration int64 `long:"groupcache-expiration" description:"Time in seconds before an item in groupcache becomes invalid."`
 }
 
 var Config *Conf
@@ -182,7 +182,39 @@ func parseConfig() error {
 		Config.ElasticsearchPasswd = opts.ElasticsearchPasswd
 	}
 
-	// GC GOES HERE
+	if opts.GroupCacheAddr != "" {
+		Config.GroupCacheAddr = Config.GroupCacheAddr
+	}
+	if opts.GroupCacheName != "" {
+		Config.GroupCacheName = Config.GroupCacheName
+	}
+	if opts.GroupCachePeerStr != "" {
+		Config.GroupCachePeerStr = Config.GroupCachePeerStr
+	}
+	if opts.GroupCacheMaxSize != 0 {
+		Config.GroupCacheMaxSize = Config.GroupCacheMaxSize
+	}
+	if opts.GroupCacheExpiration != 0 {
+		Config.GroupCacheExpiration = Config.GroupCacheExpiration
+	}
+	if Config.GroupCacheAddr == "" {
+		logger.Criticalf("no groupcache address specified!")
+		os.Exit(1)
+	}
+	if Config.GroupCacheName == "" {
+		Config.GroupCacheName = "raintank-metric-gc"
+	}
+	if Config.GroupCachePeerStr != "" {
+		Config.GroupCachePeers = strings.Split(Config.GroupCachePeerStr, ",")
+	} else {
+		Config.GroupCachePeers = make([]string, 0)
+	}
+	if Config.GroupCacheMaxSize == 0 {
+		Config.GroupCacheMaxSize = 5
+	}
+	if Config.GroupCacheExpiration == 0 {
+		Config.GroupCacheExpiration = 600
+	}
 
 	if opts.NumWorkers != 0 {
 		Config.NumWorkers = opts.NumWorkers
