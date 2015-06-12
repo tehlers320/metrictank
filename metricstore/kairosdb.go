@@ -49,7 +49,30 @@ func (kdb *Kairosdb) SendMetrics(metrics *[]metricdef.IndvMetric) error {
 			Tags:      tags,
 		}
 	}
-	return kdb.AddDatapoints(datapoints)
+	err := kdb.AddDatapoints(datapoints)
+	if err != nil {
+		logger.Infof("failed to send metrics to kairosdb -- retrying")
+		// start a ticker and a goroutine to keep trying to submit the
+		// datapoints
+		ticker := time.NewTicker(time.Second * time.Duration(30))
+		go func(t *time.Ticker, kdb *Kairosdb, datapoints []Datapoint) {
+			// TODO: have this write out or somehow save the
+			// outstanding data if we're shut down
+			for range t.C {
+				e := kdb.AddDatapoints(datapoints)
+				if e == nil {
+					// we're done
+					t.Stop()
+					logger.Infof("saved delayed datapoints")
+					return
+				} else {
+					logger.Debugf("failed to save outstanding datapoints again - message was: %s", e.Error())
+				}
+			}
+		}(ticker, kdb, datapoints)
+		return err
+	}
+	return nil
 }
 
 // AddDatapoints add datapoints to configured kairosdb instance
