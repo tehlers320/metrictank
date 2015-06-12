@@ -25,6 +25,7 @@ import (
 	elastigo "github.com/mattbaird/elastigo/lib"
 	"github.com/raintank/raintank-metric/setting"
 	"reflect"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -239,11 +240,9 @@ func InitElasticsearch() error {
 
 var gc *groupcache.Group
 
-// GroupCacheAddr
-// GroupCachePeers
-// GroupCacheName
-// GroupCacheMaxSize
-// GroupCacheExpiration
+// groupcache's getter func will need to extract the real definition key from
+// the cache key. Define this regexp only once, at least.
+var re = regexp.MustCompile(`(.*?)-\d+$`)
 
 func InitGroupcache() error {
 	peers := groupcache.NewHTTPPool(setting.Config.GroupCacheAddr)
@@ -252,12 +251,20 @@ func InitGroupcache() error {
 	}
 	gc = groupcache.NewGroup(setting.Config.GroupCacheName, setting.Config.GroupCacheMaxSize << 20, groupcache.GetterFunc(
 		func(ctx groupcache.Context, key string, dest groupcache.Sink) error {
+			matches := re.FindStringSubmatch(key)
+			if len(matches) != 2 {
+				err := fmt.Errorf("GROUPCACHE: This shouldn't happen, but somehow we failed to extract the proper key from %s", key)
+				return err
+			}
+			id := matches[1]
+
 			res, err := es.Get("definitions", "metric", key, nil)
 			logger.Debugf("GROUPCACHE: getting definition from elasticsearch: %+v", res)
 			if err != nil {
 				return err
 			}
-			logger.Debugf("GROUPCACHE: %s get returned %q", key, res.Source)
+			
+			logger.Debugf("GROUPCACHE: %s get returned %q", id, res.Source)
 			def, err := DefFromJSON(*res.Source)
 			if err != nil {
 				return nil
@@ -399,7 +406,10 @@ func GetMetricDefinition(id string) (*MetricDefinition, error) {
 
 	err := gc.Get(nil, key, groupcache.AllocatingByteSliceSink(&cached))
 	if err != nil {
+		logger.Debugf("GROUPCACHE: Trying to get the metric definition of %s (%s) from gocache returned an error: %s", id, key, err.Error())
 		return nil, err
+	} else {
+		logger.Debugf("GROUPCACHE: getting %s (%s) from groupcache succeeded", id, key)
 	}
 	
 	def := new(MetricDefinition)
