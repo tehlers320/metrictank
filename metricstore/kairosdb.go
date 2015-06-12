@@ -63,10 +63,10 @@ func (kdb *Kairosdb) SendMetrics(metrics *[]metricdef.IndvMetric) error {
 				if e == nil {
 					// we're done
 					t.Stop()
-					logger.Infof("saved delayed datapoints")
+					logger.Infof("saved delayed datapoints to kairosdb")
 					return
 				} else {
-					logger.Debugf("failed to save outstanding datapoints again - message was: %s", e.Error())
+					logger.Debugf("failed to save outstanding datapoints to kairosdb again - message was: %s", e.Error())
 				}
 			}
 		}(ticker, kdb, datapoints)
