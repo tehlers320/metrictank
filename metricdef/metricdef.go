@@ -258,7 +258,7 @@ func InitGroupcache() error {
 			}
 			id := matches[1]
 
-			res, err := es.Get("definitions", "metric", key, nil)
+			res, err := es.Get("definitions", "metric", id, nil)
 			logger.Debugf("GROUPCACHE: getting definition from elasticsearch: %+v", res)
 			if err != nil {
 				return err
@@ -404,6 +404,7 @@ func GetMetricDefinition(id string) (*MetricDefinition, error) {
 	exp := t - (t % setting.Config.GroupCacheExpiration)
 	key := fmt.Sprintf("%s-%d", id, exp)
 
+	logger.Debugf("GROUPCACHE: y u no show up?")
 	logger.Debugf("GROUPCACHE: trying to get %s (%s) one way or another", id, key)
 	err := gc.Get(nil, key, groupcache.AllocatingByteSliceSink(&cached))
 	if err != nil {
