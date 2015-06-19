@@ -404,6 +404,7 @@ func GetMetricDefinition(id string) (*MetricDefinition, error) {
 	exp := t - (t % setting.Config.GroupCacheExpiration)
 	key := fmt.Sprintf("%s-%d", id, exp)
 
+	logger.Debugf("GROUPCACHE: trying to get %s (%s) one way or another", id, key)
 	err := gc.Get(nil, key, groupcache.AllocatingByteSliceSink(&cached))
 	if err != nil {
 		logger.Debugf("GROUPCACHE: Trying to get the metric definition of %s (%s) from gocache returned an error: %s", id, key, err.Error())
