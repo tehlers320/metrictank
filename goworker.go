@@ -34,8 +34,6 @@ import (
 	"syscall"
 )
 
-var metricDefs *metricdef.MetricDefCache
-
 var bufCh chan metricdef.IndvMetric
 
 func init() {
@@ -60,11 +58,6 @@ func init() {
 		panic(err)
 	}
 	err = metricdef.InitGroupcache()
-	if err != nil {
-		panic(err)
-	}
-
-	metricDefs, err = metricdef.InitMetricDefCache()
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +91,7 @@ func main() {
 		numCPU = runtime.NumCPU()
 	}
 
-	err = qproc.ProcessQueue(mdConn, "metrics", "topic", "", "metrics.*", false, true, true, done, processMetricDefEvent, numCPU)
+	err = qproc.ProcessQueue(mdConn, "metrics", "topic", "", "metrics.*", true, true, true, done, processMetricDefEvent, numCPU)
 	if err != nil {
 		logger.Criticalf(err.Error())
 		os.Exit(1)
@@ -162,7 +155,7 @@ func processMetrics(d *amqp.Delivery) error {
 		if m.Id == "" {
 			m.Id = id
 		}
-		if err := metricDefs.CheckMetricDef(id, m); err != nil {
+		if err := metricdef.CheckMetricDef(id, m); err != nil {
 			return err
 		}
 
@@ -180,21 +173,23 @@ func processMetrics(d *amqp.Delivery) error {
 func processMetricDefEvent(d *amqp.Delivery) error {
 	action := strings.Split(d.RoutingKey, ".")[1]
 
+	// Currently these are no-ops for the moment, until invalidation events
+	// start getting sent out. At that time, the metrics will be updated
+	// or removed as needed. This will require some doing with the
+	// groupcache cache, but it'll be doable somehow.
 	switch action {
 	case "update":
 		metric, err := metricdef.DefFromJSON(d.Body)
 		if err != nil {
 			return err
 		}
-		if err := metricDefs.UpdateDefCache(metric); err != nil {
-			return err
-		}
+		_ = metric
 	case "remove":
 		metric, err := metricdef.DefFromJSON(d.Body)
 		if err != nil {
 			return err
 		}
-		metricDefs.RemoveDefCache(metric.Id)
+		_ = metric
 	default:
 		err := fmt.Errorf("message has unknown action '%s'", action)
 		return err
