@@ -44,6 +44,7 @@ type Conf struct {
 	GroupCachePeerStr string `toml:"groupcache-peers"`
 	GroupCacheMaxSize int64 `toml:"groupcache-maxsize"`
 	GroupCacheExpiration int64 `toml:"groupcache-expiration"`
+	ExpvarAddr          string `toml:"expvar-addr"`
 	LogLevel            string `toml:"log-level"`
 	LogFile             string `toml:"log-file"`
 	SysLog              bool   `toml:"syslog"`
@@ -75,6 +76,7 @@ type options struct {
 	GroupCachePeerStr string `long:"groupcache-peers" description:"Comma separated list of addresses that are our groupcache peers."`
 	GroupCacheMaxSize int64 `long:"groupcache-maxsize" description:"Max size, in megabytes, of an item stored in groupcache."`
 	GroupCacheExpiration int64 `long:"groupcache-expiration" description:"Time in seconds before an item in groupcache becomes invalid."`
+	ExpvarAddr          string `short:"e" long:"expvar-addr" description:"address to expose expvars on."`
 }
 
 var Config *Conf
@@ -106,10 +108,11 @@ func parseConfig() error {
 		os.Exit(0)
 	}
 
-	if opts.ConfFile != "" {
-		if _, err := toml.DecodeFile(opts.ConfFile, Config); err != nil {
-			return err
-		}
+	if opts.ConfFile == "" {
+		opts.ConfFile = "/etc/raintank-metric/raintank.conf"
+	}
+	if _, err := toml.DecodeFile(opts.ConfFile, Config); err != nil {
+		return err
 	}
 
 	if opts.LogFile != "" {
@@ -214,6 +217,10 @@ func parseConfig() error {
 	}
 	if Config.GroupCacheExpiration == 0 {
 		Config.GroupCacheExpiration = 600
+	}
+
+	if opts.ExpvarAddr != "" {
+		Config.ExpvarAddr = opts.ExpvarAddr
 	}
 
 	if opts.NumWorkers != 0 {
