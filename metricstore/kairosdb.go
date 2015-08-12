@@ -37,7 +37,7 @@ func (kdb *Kairosdb) SendMetrics(metrics *[]metricdef.IndvMetric) error {
 	// marshal metrics into datapoint structs
 	datapoints := make([]Datapoint, len(*metrics))
 	for i, m := range *metrics {
-		tags := make(map[string]string)
+		tags := make(map[string]string, len(m.Extra))
 		for k, v := range m.Extra {
 			tags[k] = fmt.Sprintf("%v", v)
 		}

@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var bufLen = 100 // default length for metrics buffer
+
 type MetricBackend interface {
 	SendMetrics(*[]metricdef.IndvMetric) error
 	Type() string
@@ -40,7 +42,7 @@ func NewMetricStore() (*MetricStore, error) {
 }
 
 func (mStore MetricStore) ProcessBuffer(c <-chan metricdef.IndvMetric, workerId int) {
-	buf := make([]metricdef.IndvMetric, 0)
+	buf := make([]metricdef.IndvMetric, 0, bufLen)
 
 	// flush buffer every second
 	t := time.NewTicker(time.Second)

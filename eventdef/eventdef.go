@@ -47,18 +47,19 @@ type requiredField struct {
 }
 
 func (e *EventDefinition) UnmarshalJSON(raw []byte) error {
+	s := reflect.TypeOf(*e)
+	numFields := s.NumField()
 	//lets start by unmashaling into a basic map datastructure
-	event := make(map[string]interface{})
+	event := make(map[string]interface{}, numFields)
 	err := json.Unmarshal(raw, &event)
 	if err != nil {
 		return err
 	}
 
 	//lets get a list of our required fields.
-	s := reflect.TypeOf(*e)
-	requiredFields := make(map[string]*requiredField)
+	requiredFields := make(map[string]*requiredField, numFields - 2)
 
-	for i := 0; i < s.NumField(); i++ {
+	for i := 0; i < numFields; i++ {
 		field := s.Field(i)
 		name := field.Name
 		// look at the field Tags to work out the property named used in the
@@ -109,10 +110,12 @@ func (e *EventDefinition) UnmarshalJSON(raw []byte) error {
 
 func (e *EventDefinition) MarshalJSON() ([]byte, error) {
 	//convert our Event object to a map[string]
-	event := make(map[string]interface{})
+	value := reflect.ValueOf(*e)
+	numFields := value.Type().NumField()
+	event := make(map[string]interface{}, numFields + len(e.Extra))
 
 	value := reflect.ValueOf(*e)
-	for i := 0; i < value.Type().NumField(); i++ {
+	for i := 0; i < numFields; i++ {
 		field := value.Type().Field(i)
 		name := field.Name
 		tag := field.Tag.Get("json")

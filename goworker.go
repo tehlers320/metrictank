@@ -155,6 +155,7 @@ func main() {
 }
 
 func processMetrics(d *amqp.Delivery) error {
+	// TODO: get an idea how many metrics to expect to come in each time
 	metrics := make([]*metricdef.IndvMetric, 0)
 	if err := json.Unmarshal(d.Body, &metrics); err != nil {
 		return err
