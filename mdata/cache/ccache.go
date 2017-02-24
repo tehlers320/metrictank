@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/raintank/metrictank/consolidation"
 	"github.com/raintank/metrictank/mdata/cache/accnt"
 	"github.com/raintank/metrictank/mdata/chunk"
 	"github.com/raintank/worldping-api/pkg/log"
@@ -28,6 +29,9 @@ type CCache struct {
 	// one CCacheMetric struct per metric key, indexed by the key
 	metricCache map[string]*CCacheMetric
 
+	// indexed by the raw metric keys and consolidator
+	metricRawKeys map[string]map[consolidation.Consolidator]string
+
 	// accounting for the cache. keeps track of when data needs to be evicted
 	// and what should be evicted
 	accnt accnt.Accnt
@@ -38,9 +42,10 @@ type CCache struct {
 
 func NewCCache() *CCache {
 	cc := &CCache{
-		metricCache: make(map[string]*CCacheMetric),
-		accnt:       accnt.NewFlatAccnt(maxSize),
-		stop:        make(chan interface{}),
+		metricCache:   make(map[string]*CCacheMetric),
+		metricRawKeys: make(map[string]map[consolidation.Consolidator]string),
+		accnt:         accnt.NewFlatAccnt(maxSize),
+		stop:          make(chan interface{}),
 	}
 	go cc.evictLoop()
 	return cc
@@ -56,6 +61,29 @@ func (c *CCache) evictLoop() {
 			return
 		}
 	}
+}
+
+// takes a raw key and deletes all archives associated with it from cache
+func (c *CCache) DelMetric(rawMetric string) *CCDelMetricResult {
+	res := &CCDelMetricResult{}
+
+	c.Lock()
+	defer c.Unlock()
+
+	mets, ok := c.metricRawKeys[rawMetric]
+	if !ok {
+		return res
+	}
+
+	for _, met := range mets {
+		delete(c.metricCache, met)
+		c.accnt.DelMetric(met)
+		res.Deleted = append(res.Deleted, met)
+	}
+
+	delete(c.metricRawKeys, rawMetric)
+
+	return res
 }
 
 // adds the given chunk to the cache, but only if the metric is sufficiently hot
@@ -82,17 +110,28 @@ func (c *CCache) CacheIfHot(metric string, prev uint32, itergen chunk.IterGen) {
 	accnt.CacheChunkPushHot.Inc()
 
 	c.RUnlock()
-	c.Add(metric, prev, itergen)
+	met.Add(prev, itergen)
 }
 
-func (c *CCache) Add(metric string, prev uint32, itergen chunk.IterGen) {
+func (c *CCache) Add(metric, rawMetric string, cons consolidation.Consolidator, prev uint32, itergen chunk.IterGen) {
 	c.Lock()
 	defer c.Unlock()
 
-	if ccm, ok := c.metricCache[metric]; !ok {
+	ccm, ok := c.metricCache[metric]
+	if !ok {
 		ccm = NewCCacheMetric()
-		ccm.Init(prev, itergen)
+		ccm.Init(rawMetric, cons, prev, itergen)
 		c.metricCache[metric] = ccm
+
+		ccms, ok := c.metricRawKeys[rawMetric]
+		if !ok {
+			ccms = make(map[consolidation.Consolidator]string)
+			c.metricRawKeys[rawMetric] = ccms
+		}
+
+		if _, ok = ccms[cons]; !ok {
+			ccms[cons] = metric
+		}
 	} else {
 		ccm.Add(prev, itergen)
 	}
@@ -104,6 +143,7 @@ func (cc *CCache) Reset() {
 	cc.accnt.Reset()
 	cc.Lock()
 	cc.metricCache = make(map[string]*CCacheMetric)
+	cc.metricRawKeys = make(map[string]map[consolidation.Consolidator]string)
 	cc.Unlock()
 }
 
@@ -120,11 +160,23 @@ func (c *CCache) evict(target *accnt.EvictTarget) {
 	defer runtime.Gosched()
 	defer c.Unlock()
 
-	if _, ok := c.metricCache[target.Metric]; ok {
-		log.Debug("CCache evict: evicting chunk %d on metric %s\n", target.Ts, target.Metric)
-		length := c.metricCache[target.Metric].Del(target.Ts)
-		if length == 0 {
-			delete(c.metricCache, target.Metric)
+	ccm, ok := c.metricCache[target.Metric]
+	if !ok {
+		return
+	}
+
+	log.Debug("CCache evict: evicting chunk %d on metric %s\n", target.Ts, target.Metric)
+	length := c.metricCache[target.Metric].Del(target.Ts)
+	if length == 0 {
+		delete(c.metricCache, target.Metric)
+
+		if ccms, ok := c.metricRawKeys[ccm.RawMetric]; ok {
+			if _, ok := ccms[ccm.Cons]; ok {
+				delete(ccms, ccm.Cons)
+				if len(ccms) == 0 {
+					delete(c.metricRawKeys, ccm.RawMetric)
+				}
+			}
 		}
 	}
 }

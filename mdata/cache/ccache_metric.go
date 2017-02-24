@@ -4,6 +4,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/raintank/metrictank/consolidation"
 	"github.com/raintank/metrictank/mdata/cache/accnt"
 	"github.com/raintank/metrictank/mdata/chunk"
 	"github.com/raintank/worldping-api/pkg/log"
@@ -17,6 +18,9 @@ type CCacheMetric struct {
 
 	// the list of chunk time stamps in ascending order
 	keys []uint32
+
+	RawMetric string
+	Cons      consolidation.Consolidator
 }
 
 func NewCCacheMetric() *CCacheMetric {
@@ -25,7 +29,9 @@ func NewCCacheMetric() *CCacheMetric {
 	}
 }
 
-func (mc *CCacheMetric) Init(prev uint32, itergen chunk.IterGen) {
+func (mc *CCacheMetric) Init(rawMetric string, cons consolidation.Consolidator, prev uint32, itergen chunk.IterGen) {
+	mc.RawMetric = rawMetric
+	mc.Cons = cons
 	mc.Add(prev, itergen)
 }
 

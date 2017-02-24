@@ -480,7 +480,7 @@ func (s *Server) getSeriesCachedStore(ctx *requestContext, until uint32) []chunk
 				}
 				// it's important that the itgens get added in chronological order,
 				// currently we rely on cassandra returning results in order
-				go s.Cache.Add(key, prevts, itgen)
+				go s.Cache.Add(key, ctx.Key, ctx.Cons, prevts, itgen)
 				prevts = itgen.Ts
 				iters = append(iters, *it)
 			}

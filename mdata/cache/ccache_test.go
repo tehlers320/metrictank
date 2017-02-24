@@ -41,11 +41,11 @@ func getConnectedChunks(t *testing.T, metric string) *CCache {
 	itgen4 := getItgen(t, values, 1015, false)
 	itgen5 := getItgen(t, values, 1020, false)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 1000, itgen2)
-	cc.Add(metric, 1005, itgen3)
-	cc.Add(metric, 1010, itgen4)
-	cc.Add(metric, 1015, itgen5)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 1000, itgen2)
+	cc.Add(metric, metric, 0, 1005, itgen3)
+	cc.Add(metric, metric, 0, 1010, itgen4)
+	cc.Add(metric, metric, 0, 1015, itgen5)
 
 	return cc
 }
@@ -60,8 +60,8 @@ func TestAddIfHotWithoutPrevTsOnHotMetric(t *testing.T) {
 	itgen2 := getItgen(t, values, 1005, false)
 	itgen3 := getItgen(t, values, 1010, false)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 1000, itgen2)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 1000, itgen2)
 
 	cc.CacheIfHot(metric, 0, itgen3)
 
@@ -94,7 +94,7 @@ func TestAddIfHotWithoutPrevTsOnColdMetric(t *testing.T) {
 	itgen1 := getItgen(t, values, 1000, false)
 	itgen3 := getItgen(t, values, 1010, false)
 
-	cc.Add(metric, 0, itgen1)
+	cc.Add(metric, metric, 0, 0, itgen1)
 
 	cc.CacheIfHot(metric, 0, itgen3)
 
@@ -120,8 +120,8 @@ func TestAddIfHotWithPrevTsOnHotMetric(t *testing.T) {
 	itgen2 := getItgen(t, values, 1005, false)
 	itgen3 := getItgen(t, values, 1010, false)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 1000, itgen2)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 1000, itgen2)
 
 	cc.CacheIfHot(metric, 1005, itgen3)
 
@@ -154,7 +154,7 @@ func TestAddIfHotWithPrevTsOnColdMetric(t *testing.T) {
 	itgen1 := getItgen(t, values, 1000, false)
 	itgen3 := getItgen(t, values, 1010, false)
 
-	cc.Add(metric, 0, itgen1)
+	cc.Add(metric, metric, 0, 0, itgen1)
 
 	cc.CacheIfHot(metric, 1005, itgen3)
 
@@ -178,8 +178,8 @@ func TestConsecutiveAdding(t *testing.T) {
 	itgen1 := getItgen(t, values, 1000, false)
 	itgen2 := getItgen(t, values, 1005, false)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 1000, itgen2)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 1000, itgen2)
 
 	mc := cc.metricCache[metric]
 	chunk1, ok := mc.chunks[1000]
@@ -215,9 +215,9 @@ func TestDisconnectedAdding(t *testing.T) {
 	itgen2 := getItgen(t, values, 1005, true)
 	itgen3 := getItgen(t, values, 1010, true)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 0, itgen2)
-	cc.Add(metric, 0, itgen3)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 0, itgen2)
+	cc.Add(metric, metric, 0, 0, itgen3)
 
 	res := cc.Search(metric, 900, 1015)
 
@@ -249,9 +249,9 @@ func TestDisconnectedAddingByGuessing(t *testing.T) {
 	itgen2 := getItgen(t, values, 1005, false)
 	itgen3 := getItgen(t, values, 1010, false)
 
-	cc.Add(metric, 0, itgen1)
-	cc.Add(metric, 1000, itgen2)
-	cc.Add(metric, 0, itgen3)
+	cc.Add(metric, metric, 0, 0, itgen1)
+	cc.Add(metric, metric, 0, 1000, itgen2)
+	cc.Add(metric, metric, 0, 0, itgen3)
 
 	res := cc.Search(metric, 900, 1015)
 
@@ -379,19 +379,19 @@ func testSearchDisconnectedStartEnd(t *testing.T, spanaware, ascending bool) {
 			cc.Reset()
 
 			if ascending {
-				cc.Add(metric, 0, itgen1)
-				cc.Add(metric, 1000, itgen2)
-				cc.Add(metric, 1010, itgen3)
-				cc.Add(metric, 0, itgen4)
-				cc.Add(metric, 1030, itgen5)
-				cc.Add(metric, 1040, itgen6)
+				cc.Add(metric, metric, 0, 0, itgen1)
+				cc.Add(metric, metric, 0, 1000, itgen2)
+				cc.Add(metric, metric, 0, 1010, itgen3)
+				cc.Add(metric, metric, 0, 0, itgen4)
+				cc.Add(metric, metric, 0, 1030, itgen5)
+				cc.Add(metric, metric, 0, 1040, itgen6)
 			} else {
-				cc.Add(metric, 0, itgen6)
-				cc.Add(metric, 0, itgen5)
-				cc.Add(metric, 0, itgen4)
-				cc.Add(metric, 0, itgen3)
-				cc.Add(metric, 0, itgen2)
-				cc.Add(metric, 0, itgen1)
+				cc.Add(metric, metric, 0, 0, itgen6)
+				cc.Add(metric, metric, 0, 0, itgen5)
+				cc.Add(metric, metric, 0, 0, itgen4)
+				cc.Add(metric, metric, 0, 0, itgen3)
+				cc.Add(metric, metric, 0, 0, itgen2)
+				cc.Add(metric, metric, 0, 0, itgen1)
 			}
 
 			res = cc.Search(metric, from, until)
@@ -455,19 +455,19 @@ func testSearchDisconnectedWithGapStartEnd(t *testing.T, spanaware, ascending bo
 			cc.Reset()
 
 			if ascending {
-				cc.Add(metric, 0, itgen1)
-				cc.Add(metric, 1000, itgen2)
-				cc.Add(metric, 1010, itgen3)
-				cc.Add(metric, 0, itgen4)
-				cc.Add(metric, 1040, itgen5)
-				cc.Add(metric, 1050, itgen6)
+				cc.Add(metric, metric, 0, 0, itgen1)
+				cc.Add(metric, metric, 0, 1000, itgen2)
+				cc.Add(metric, metric, 0, 1010, itgen3)
+				cc.Add(metric, metric, 0, 0, itgen4)
+				cc.Add(metric, metric, 0, 1040, itgen5)
+				cc.Add(metric, metric, 0, 1050, itgen6)
 			} else {
-				cc.Add(metric, 0, itgen6)
-				cc.Add(metric, 0, itgen5)
-				cc.Add(metric, 0, itgen4)
-				cc.Add(metric, 0, itgen3)
-				cc.Add(metric, 0, itgen2)
-				cc.Add(metric, 0, itgen1)
+				cc.Add(metric, metric, 0, 0, itgen6)
+				cc.Add(metric, metric, 0, 0, itgen5)
+				cc.Add(metric, metric, 0, 0, itgen4)
+				cc.Add(metric, metric, 0, 0, itgen3)
+				cc.Add(metric, metric, 0, 0, itgen2)
+				cc.Add(metric, metric, 0, 0, itgen1)
 			}
 
 			res = cc.Search(metric, from, until)
