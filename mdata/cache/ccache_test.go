@@ -501,3 +501,63 @@ func testSearchDisconnectedWithGapStartEnd(t *testing.T, spanaware, ascending bo
 		}
 	}
 }
+
+func TestMetricDelete(t *testing.T) {
+	var res *CCSearchResult
+
+	rawMetric1 := "some.tree.metric1"
+	metric1 := "some.tree.metric1_600_cnt"
+	rawMetric2 := "some.tree.metric2"
+	metric2 := "some.tree.metric2_600_cnt"
+	cc := NewCCache()
+	values := []uint32{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	itgenCount := 10
+	itgens := make([]chunk.IterGen, 0, itgenCount)
+	for i := 1000; i < 1000+itgenCount*len(values); i = i + len(values) {
+		itgens = append(itgens, getItgen(t, values, uint32(i), true))
+	}
+
+	// add two metrics with itgenCount chunks each
+	for _, itgen := range itgens {
+		cc.Add(metric1, rawMetric1, 0, 0, itgen)
+		cc.Add(metric2, rawMetric2, 0, 0, itgen)
+	}
+
+	// check if Search returns them all for metric1
+	res = cc.Search(metric1, 1000, uint32(1000+itgenCount*len(values)))
+	if len(res.Start) != itgenCount {
+		t.Fatalf("Expected to have %d values, got %d", itgenCount, len(res.Start))
+	}
+
+	// check if Search returns them all for metric2
+	res = cc.Search(metric2, 1000, uint32(1000+itgenCount*len(values)))
+	if len(res.Start) != itgenCount {
+		t.Fatalf("Expected to have %d values, got %d", itgenCount, len(res.Start))
+	}
+
+	// now delete metric1, but leave metric2
+	cc.DelMetric(rawMetric1)
+
+	// check if metric1 returns no results anymore
+	res = cc.Search(metric1, 1000, uint32(1000+itgenCount*len(values)))
+	if len(res.Start) != 0 {
+		t.Fatalf("Expected to have %d values, got %d", 0, len(res.Start))
+	}
+
+	// but metric2 should still be there
+	res = cc.Search(metric2, 1000, uint32(1000+itgenCount*len(values)))
+	if len(res.Start) != itgenCount {
+		t.Fatalf("Expected to have %d values, got %d", itgenCount, len(res.Start))
+	}
+
+	// now add metric1 again
+	for _, itgen := range itgens {
+		cc.Add(metric1, rawMetric1, 0, 0, itgen)
+	}
+
+	// and check if it gets returned by Search again
+	res = cc.Search(metric1, 1000, uint32(1000+itgenCount*len(values)))
+	if len(res.Start) != itgenCount {
+		t.Fatalf("Expected to have %d values, got %d", itgenCount, len(res.Start))
+	}
+}
