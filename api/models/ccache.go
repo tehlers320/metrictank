@@ -1,17 +1,13 @@
 package models
 
 type CCacheDelete struct {
-	Patterns []string `json:"patterns" form:"patterns" binding:"Required"`
-	OrgId    int      `json:"orgId" form:"orgId" binding:"Required"`
+	Patterns  []string `json:"patterns" form:"patterns" binding:"Required"`
+	OrgId     int      `json:"orgId" form:"orgId" binding:"Required"`
+	Propagate bool     `json:"propagate" form:"propagate"`
 }
 
 //go:generate msgp
 type CCacheDeleteResp struct {
-	Nodes []string
-}
-
-func NewCCacheDeleteResp() *CCacheDeleteResp {
-	return &CCacheDeleteResp{
-		Nodes: make([]string, 0),
-	}
+	PeerErrors    int `json:"peerErrors"`
+	DeletedSeries int `json:"deletedSeries"`
 }

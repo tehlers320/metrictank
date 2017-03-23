@@ -46,6 +46,11 @@ func (z *CCacheDelete) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "Propagate":
+			z.Propagate, err = dc.ReadBool()
+			if err != nil {
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -58,9 +63,9 @@ func (z *CCacheDelete) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CCacheDelete) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "Patterns"
-	err = en.Append(0x82, 0xa8, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
+	err = en.Append(0x83, 0xa8, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
 	if err != nil {
 		return err
 	}
@@ -83,15 +88,24 @@ func (z *CCacheDelete) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "Propagate"
+	err = en.Append(0xa9, 0x50, 0x72, 0x6f, 0x70, 0x61, 0x67, 0x61, 0x74, 0x65)
+	if err != nil {
+		return err
+	}
+	err = en.WriteBool(z.Propagate)
+	if err != nil {
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *CCacheDelete) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "Patterns"
-	o = append(o, 0x82, 0xa8, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
+	o = append(o, 0x83, 0xa8, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Patterns)))
 	for zxvk := range z.Patterns {
 		o = msgp.AppendString(o, z.Patterns[zxvk])
@@ -99,6 +113,9 @@ func (z *CCacheDelete) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "OrgId"
 	o = append(o, 0xa5, 0x4f, 0x72, 0x67, 0x49, 0x64)
 	o = msgp.AppendInt(o, z.OrgId)
+	// string "Propagate"
+	o = append(o, 0xa9, 0x50, 0x72, 0x6f, 0x70, 0x61, 0x67, 0x61, 0x74, 0x65)
+	o = msgp.AppendBool(o, z.Propagate)
 	return
 }
 
@@ -140,6 +157,11 @@ func (z *CCacheDelete) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "Propagate":
+			z.Propagate, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -157,7 +179,7 @@ func (z *CCacheDelete) Msgsize() (s int) {
 	for zxvk := range z.Patterns {
 		s += msgp.StringPrefixSize + len(z.Patterns[zxvk])
 	}
-	s += 6 + msgp.IntSize
+	s += 6 + msgp.IntSize + 10 + msgp.BoolSize
 	return
 }
 
@@ -165,34 +187,27 @@ func (z *CCacheDelete) Msgsize() (s int) {
 func (z *CCacheDeleteResp) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
-	var zhct uint32
-	zhct, err = dc.ReadMapHeader()
+	var zwht uint32
+	zwht, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
-	for zhct > 0 {
-		zhct--
+	for zwht > 0 {
+		zwht--
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Nodes":
-			var zcua uint32
-			zcua, err = dc.ReadArrayHeader()
+		case "PeerErrors":
+			z.PeerErrors, err = dc.ReadInt()
 			if err != nil {
 				return
 			}
-			if cap(z.Nodes) >= int(zcua) {
-				z.Nodes = (z.Nodes)[:zcua]
-			} else {
-				z.Nodes = make([]string, zcua)
-			}
-			for zwht := range z.Nodes {
-				z.Nodes[zwht], err = dc.ReadString()
-				if err != nil {
-					return
-				}
+		case "DeletedSeries":
+			z.DeletedSeries, err = dc.ReadInt()
+			if err != nil {
+				return
 			}
 		default:
 			err = dc.Skip()
@@ -205,36 +220,39 @@ func (z *CCacheDeleteResp) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *CCacheDeleteResp) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
-	// write "Nodes"
-	err = en.Append(0x81, 0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+func (z CCacheDeleteResp) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "PeerErrors"
+	err = en.Append(0x82, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
 	if err != nil {
 		return err
 	}
-	err = en.WriteArrayHeader(uint32(len(z.Nodes)))
+	err = en.WriteInt(z.PeerErrors)
 	if err != nil {
 		return
 	}
-	for zwht := range z.Nodes {
-		err = en.WriteString(z.Nodes[zwht])
-		if err != nil {
-			return
-		}
+	// write "DeletedSeries"
+	err = en.Append(0xad, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73)
+	if err != nil {
+		return err
+	}
+	err = en.WriteInt(z.DeletedSeries)
+	if err != nil {
+		return
 	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *CCacheDeleteResp) MarshalMsg(b []byte) (o []byte, err error) {
+func (z CCacheDeleteResp) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
-	// string "Nodes"
-	o = append(o, 0x81, 0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Nodes)))
-	for zwht := range z.Nodes {
-		o = msgp.AppendString(o, z.Nodes[zwht])
-	}
+	// map header, size 2
+	// string "PeerErrors"
+	o = append(o, 0x82, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
+	o = msgp.AppendInt(o, z.PeerErrors)
+	// string "DeletedSeries"
+	o = append(o, 0xad, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73)
+	o = msgp.AppendInt(o, z.DeletedSeries)
 	return
 }
 
@@ -242,34 +260,27 @@ func (z *CCacheDeleteResp) MarshalMsg(b []byte) (o []byte, err error) {
 func (z *CCacheDeleteResp) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
-	var zxhx uint32
-	zxhx, bts, err = msgp.ReadMapHeaderBytes(bts)
+	var zhct uint32
+	zhct, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for zxhx > 0 {
-		zxhx--
+	for zhct > 0 {
+		zhct--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Nodes":
-			var zlqf uint32
-			zlqf, bts, err = msgp.ReadArrayHeaderBytes(bts)
+		case "PeerErrors":
+			z.PeerErrors, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.Nodes) >= int(zlqf) {
-				z.Nodes = (z.Nodes)[:zlqf]
-			} else {
-				z.Nodes = make([]string, zlqf)
-			}
-			for zwht := range z.Nodes {
-				z.Nodes[zwht], bts, err = msgp.ReadStringBytes(bts)
-				if err != nil {
-					return
-				}
+		case "DeletedSeries":
+			z.DeletedSeries, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				return
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -283,10 +294,7 @@ func (z *CCacheDeleteResp) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *CCacheDeleteResp) Msgsize() (s int) {
-	s = 1 + 6 + msgp.ArrayHeaderSize
-	for zwht := range z.Nodes {
-		s += msgp.StringPrefixSize + len(z.Nodes[zwht])
-	}
+func (z CCacheDeleteResp) Msgsize() (s int) {
+	s = 1 + 11 + msgp.IntSize + 14 + msgp.IntSize
 	return
 }
