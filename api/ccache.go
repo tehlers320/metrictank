@@ -15,9 +15,10 @@ func (s *Server) ccacheDelete(ctx *middleware.Context, req models.CCacheDelete) 
 	resp := models.CCacheDeleteResp{}
 
 	if req.Propagate {
-		deleted, errors := s.ccacheDeletePropagate(&req)
-		resp.DeletedSeries += deleted
-		resp.PeerErrors += errors
+		deletedSeries, deletedArchives, errors := s.ccacheDeletePropagate(&req)
+		resp.DeletedSeries = deletedSeries
+		resp.DeletedArchives = deletedArchives
+		resp.PeerErrors = errors
 	}
 
 	for _, pattern := range req.Patterns {
@@ -37,12 +38,12 @@ func (s *Server) ccacheDelete(ctx *middleware.Context, req models.CCacheDelete) 
 	response.Write(ctx, response.NewMsgp(200, resp))
 }
 
-func (s *Server) ccacheDeletePropagate(req *models.CCacheDelete) (int, int) {
+func (s *Server) ccacheDeletePropagate(req *models.CCacheDelete) (int, int, int) {
 	// we never want to propagate more than once to avoid loops
 	req.Propagate = false
 
 	peers := cluster.Manager.MemberList()
-	var deleted, errors int = 0, 0
+	var deletedSeries, deletedArchives, errors int = 0, 0, 0
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, peer := range peers {
@@ -50,37 +51,38 @@ func (s *Server) ccacheDeletePropagate(req *models.CCacheDelete) (int, int) {
 			continue
 		}
 		wg.Add(1)
-		go func() {
+		go func(peer cluster.NodeIf) {
 			mu.Lock()
-			deletedPeer, err := s.ccacheDeleteRemote(req, peer)
+			defer mu.Unlock()
+			deletedPeerSeries, deletedPeerArchives, err := s.ccacheDeleteRemote(req, peer)
 			if err != nil {
 				errors++
 			} else {
-				deleted += deletedPeer
+				deletedSeries += deletedPeerSeries
+				deletedArchives += deletedPeerArchives
 			}
-			mu.Unlock()
 			wg.Done()
-		}()
+		}(peer)
 	}
 	wg.Wait()
 
-	return deleted, errors
+	return deletedSeries, deletedArchives, errors
 }
 
-func (s *Server) ccacheDeleteRemote(req *models.CCacheDelete, peer cluster.NodeIf) (int, error) {
+func (s *Server) ccacheDeleteRemote(req *models.CCacheDelete, peer cluster.NodeIf) (int, int, error) {
 	log.Debug("HTTP metricDelete calling %s/ccache/delete", peer.GetName())
 	buf, err := peer.Post("/ccache/delete", *req)
 	if err != nil {
 		log.Error(4, "HTTP ccacheDelete error querying %s/ccache/delete: %q", peer.GetName(), err)
-		return 0, err
+		return 0, 0, err
 	}
 
 	resp := models.CCacheDeleteResp{}
 	buf, err = resp.UnmarshalMsg(buf)
 	if err != nil {
 		log.Error(4, "HTTP ccacheDelete error unmarshaling body from %s/ccache/delete: %q", peer.GetName(), err)
-		return 0, err
+		return 0, 0, err
 	}
 
-	return resp.DeletedSeries, nil
+	return resp.DeletedSeries, resp.DeletedArchives, nil
 }

@@ -6,11 +6,8 @@ import (
 
 type NodeIf interface {
 	IsLocal() bool
-	//IsReady() bool
-	//IsPrimary() bool
 	Post(string, interface{}) ([]byte, error)
 	GetName() string
-	//GetPriority() int
 }
 
 type ClusterManagerIf interface {
