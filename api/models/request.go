@@ -16,7 +16,7 @@ type Req struct {
 	MaxPoints    uint32                     `json:"maxPoints"`
 	RawInterval  uint32                     `json:"rawInterval"`  // the interval of the raw metric before any consolidation
 	Consolidator consolidation.Consolidator `json:"consolidator"` // consolidation method for rollup archive and normalization. (not runtime consolidation)
-	Node         cluster.Node               `json:"-"`
+	Node         cluster.NodeIf             `json:"-"`
 	SchemaId     uint16                     `json:"schemaId"`
 	AggId        uint16                     `json:"aggId"`
 
@@ -28,7 +28,7 @@ type Req struct {
 	AggNum       uint32 `json:"aggNum"`       // how many points to consolidate together at runtime, after fetching from the archive
 }
 
-func NewReq(key, target string, from, to, maxPoints, rawInterval uint32, consolidator consolidation.Consolidator, node cluster.Node, schemaId, aggId uint16) Req {
+func NewReq(key, target string, from, to, maxPoints, rawInterval uint32, consolidator consolidation.Consolidator, node cluster.NodeIf, schemaId, aggId uint16) Req {
 	return Req{
 		key,
 		target,

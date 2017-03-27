@@ -67,18 +67,18 @@ func (s *Server) ccacheDeletePropagate(req *models.CCacheDelete) (int, int) {
 	return deleted, errors
 }
 
-func (s *Server) ccacheDeleteRemote(req *models.CCacheDelete, peer cluster.Node) (int, error) {
-	log.Debug("HTTP metricDelete calling %s/ccache/delete", peer.Name)
+func (s *Server) ccacheDeleteRemote(req *models.CCacheDelete, peer cluster.NodeIf) (int, error) {
+	log.Debug("HTTP metricDelete calling %s/ccache/delete", peer.GetName())
 	buf, err := peer.Post("/ccache/delete", *req)
 	if err != nil {
-		log.Error(4, "HTTP ccacheDelete error querying %s/ccache/delete: %q", peer.Name, err)
+		log.Error(4, "HTTP ccacheDelete error querying %s/ccache/delete: %q", peer.GetName(), err)
 		return 0, err
 	}
 
 	resp := models.CCacheDeleteResp{}
 	buf, err = resp.UnmarshalMsg(buf)
 	if err != nil {
-		log.Error(4, "HTTP ccacheDelete error unmarshaling body from %s/ccache/delete: %q", peer.Name, err)
+		log.Error(4, "HTTP ccacheDelete error unmarshaling body from %s/ccache/delete: %q", peer.GetName(), err)
 		return 0, err
 	}
 

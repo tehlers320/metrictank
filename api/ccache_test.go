@@ -62,7 +62,7 @@ func TestMetricDelete(t *testing.T) {
 	req, _ := json.Marshal(models.CCacheDelete{
 		Patterns:  []string{"test.*"},
 		OrgId:     1,
-		Propagate: true,
+		Propagate: false,
 	})
 
 	ts := httptest.NewServer(srv.Macaron)

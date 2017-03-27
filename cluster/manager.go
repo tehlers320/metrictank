@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"encoding/json"
+	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,13 +61,21 @@ func (c *ClusterManager) setList(list *memberlist.Memberlist) {
 	c.Unlock()
 }
 
-func (c *ClusterManager) ThisNode() Node {
+func (c *ClusterManager) ThisNode() NodeIf {
+	return c.thisNode()
+}
+
+func (c *ClusterManager) thisNode() Node {
 	c.RLock()
 	defer c.RUnlock()
 	return c.members[c.nodeName]
 }
 
-func (c *ClusterManager) MemberList() []Node {
+func (c *ClusterManager) MemberList() []NodeIf {
+	return toIf(c.memberList())
+}
+
+func (c *ClusterManager) memberList() []Node {
 	c.RLock()
 	list := make([]Node, len(c.members), len(c.members))
 	i := 0
@@ -327,4 +337,118 @@ func (c *ClusterManager) SetPriority(prio int) {
 	c.Unlock()
 	nodePriority.Set(prio)
 	c.BroadcastUpdate()
+}
+
+func (c *ClusterManager) Stop() {
+	c.list.Leave(time.Second)
+}
+
+func (c *ClusterManager) Start() {
+	log.Info("CLU Start: Starting cluster on %s:%d", cfg.BindAddr, cfg.BindPort)
+	list, err := memberlist.Create(cfg)
+	if err != nil {
+		log.Fatal(4, "CLU Start: Failed to create memberlist: %s", err.Error())
+	}
+	c.setList(list)
+
+	if peersStr == "" {
+		return
+	}
+	n, err := list.Join(strings.Split(peersStr, ","))
+	if err != nil {
+		log.Fatal(4, "CLU Start: Failed to join cluster: %s", err.Error())
+	}
+	log.Info("CLU Start: joined to %d nodes in cluster", n)
+}
+
+func (c *ClusterManager) MembersForQuery() []NodeIf {
+	return toIf(c.membersForQuery())
+}
+
+// return the list of nodes to broadcast requests to
+// If partitions are assinged to nodes in groups
+// (a[0,1], b[0,1], c[2,3], d[2,3] as opposed to a[0,1], b[0,2], c[1,3], d[2,3]),
+// only 1 member per partition is returned.
+// The nodes are selected based on priority, preferring thisNode if it
+// has the lowest prio, otherwise using a random selection from all
+// nodes with the lowest prio.
+func (c *ClusterManager) membersForQuery() []Node {
+	thisNode := c.thisNode()
+	// If we are running in single mode, just return thisNode
+	if Mode == ModeSingle {
+		return []Node{thisNode}
+	}
+
+	// store the available nodes for each partition, grouped by
+	// priority
+	membersMap := make(map[int32]*partitionCandidates)
+	if thisNode.IsReady() {
+		for _, part := range thisNode.Partitions {
+			membersMap[part] = &partitionCandidates{
+				priority: thisNode.Priority,
+				nodes:    []Node{thisNode},
+			}
+		}
+	}
+
+	for _, member := range c.memberList() {
+		if !member.IsReady() || member.Name == thisNode.Name {
+			continue
+		}
+		for _, part := range member.Partitions {
+			if _, ok := membersMap[part]; !ok {
+				membersMap[part] = &partitionCandidates{
+					priority: member.Priority,
+					nodes:    []Node{member},
+				}
+				continue
+			}
+			if membersMap[part].priority == member.Priority {
+				membersMap[part].nodes = append(membersMap[part].nodes, member)
+			} else if membersMap[part].priority > member.Priority {
+				// this node has higher priority (lower number) then previously seen candidates
+				membersMap[part] = &partitionCandidates{
+					priority: member.Priority,
+					nodes:    []Node{member},
+				}
+			}
+		}
+	}
+
+	selectedMembers := make(map[string]struct{})
+	answer := make([]Node, 0)
+	// we want to get the minimum number of nodes
+	// needed to cover all partitions
+
+LOOP:
+	for _, candidates := range membersMap {
+		if candidates.nodes[0].Name == thisNode.Name {
+			if _, ok := selectedMembers[thisNode.Name]; !ok {
+				selectedMembers[thisNode.Name] = struct{}{}
+				answer = append(answer, thisNode)
+			}
+			continue LOOP
+		}
+
+		for _, n := range candidates.nodes {
+			if _, ok := selectedMembers[n.Name]; ok {
+				continue LOOP
+			}
+		}
+		// if no nodes have been selected yet then grab a
+		// random node from the set of available nodes
+		selected := candidates.nodes[rand.Intn(len(candidates.nodes))]
+		selectedMembers[selected.Name] = struct{}{}
+		answer = append(answer, selected)
+	}
+
+	return answer
+}
+
+func toIf(in []Node) []NodeIf {
+	out := make([]NodeIf, len(in))
+	for i, m := range in {
+		out[i] = m
+	}
+	return out
 }

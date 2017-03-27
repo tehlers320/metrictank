@@ -9,8 +9,8 @@ type NodeStatus struct {
 }
 
 type ClusterStatus struct {
-	NodeName string         `json:"nodeName"`
-	Members  []cluster.Node `json:"members"`
+	NodeName string           `json:"nodeName"`
+	Members  []cluster.NodeIf `json:"members"`
 }
 
 type IndexList struct {

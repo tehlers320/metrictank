@@ -128,6 +128,10 @@ func (n Node) Post(path string, body interface{}) ([]byte, error) {
 	return handleResp(rsp)
 }
 
+func (n Node) GetName() string {
+	return n.Name
+}
+
 func handleResp(rsp *http.Response) ([]byte, error) {
 	defer rsp.Body.Close()
 	if rsp.StatusCode != 200 {
