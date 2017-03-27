@@ -209,6 +209,11 @@ func (z *CCacheDeleteResp) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "DeletedArchives":
+			z.DeletedArchives, err = dc.ReadInt()
+			if err != nil {
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -221,9 +226,9 @@ func (z *CCacheDeleteResp) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z CCacheDeleteResp) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "PeerErrors"
-	err = en.Append(0x82, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
+	err = en.Append(0x83, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
 	if err != nil {
 		return err
 	}
@@ -240,19 +245,31 @@ func (z CCacheDeleteResp) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "DeletedArchives"
+	err = en.Append(0xaf, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73)
+	if err != nil {
+		return err
+	}
+	err = en.WriteInt(z.DeletedArchives)
+	if err != nil {
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z CCacheDeleteResp) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "PeerErrors"
-	o = append(o, 0x82, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
+	o = append(o, 0x83, 0xaa, 0x50, 0x65, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
 	o = msgp.AppendInt(o, z.PeerErrors)
 	// string "DeletedSeries"
 	o = append(o, 0xad, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73)
 	o = msgp.AppendInt(o, z.DeletedSeries)
+	// string "DeletedArchives"
+	o = append(o, 0xaf, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x41, 0x72, 0x63, 0x68, 0x69, 0x76, 0x65, 0x73)
+	o = msgp.AppendInt(o, z.DeletedArchives)
 	return
 }
 
@@ -282,6 +299,11 @@ func (z *CCacheDeleteResp) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "DeletedArchives":
+			z.DeletedArchives, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -295,6 +317,6 @@ func (z *CCacheDeleteResp) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z CCacheDeleteResp) Msgsize() (s int) {
-	s = 1 + 11 + msgp.IntSize + 14 + msgp.IntSize
+	s = 1 + 11 + msgp.IntSize + 14 + msgp.IntSize + 16 + msgp.IntSize
 	return
 }

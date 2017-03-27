@@ -18,7 +18,8 @@ type CachePusher interface {
 }
 
 type CCDelMetricResult struct {
-	Deleted []string
+	Series   int
+	Archives int
 }
 
 type CCSearchResult struct {

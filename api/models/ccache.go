@@ -8,6 +8,7 @@ type CCacheDelete struct {
 
 //go:generate msgp
 type CCacheDeleteResp struct {
-	PeerErrors    int `json:"peerErrors"`
-	DeletedSeries int `json:"deletedSeries"`
+	PeerErrors      int `json:"peerErrors"`
+	DeletedSeries   int `json:"deletedSeries"`
+	DeletedArchives int `json:"deletedArchives"`
 }

@@ -29,7 +29,8 @@ func (s *Server) ccacheDelete(ctx *middleware.Context, req models.CCacheDelete) 
 		for _, node := range nodes {
 			for _, def := range node.Defs {
 				res := s.Cache.DelMetric(def.Id)
-				resp.DeletedSeries += len(res.Deleted)
+				resp.DeletedSeries += res.Series
+				resp.DeletedArchives += res.Archives
 			}
 		}
 	}

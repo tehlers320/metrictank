@@ -78,10 +78,11 @@ func (c *CCache) DelMetric(rawMetric string) *CCDelMetricResult {
 	for _, met := range mets {
 		delete(c.metricCache, met)
 		c.accnt.DelMetric(met)
-		res.Deleted = append(res.Deleted, met)
+		res.Archives++
 	}
 
 	delete(c.metricRawKeys, rawMetric)
+	res.Series++
 
 	return res
 }
