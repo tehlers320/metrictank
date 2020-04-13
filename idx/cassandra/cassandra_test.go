@@ -76,6 +76,7 @@ func init() {
 	CliConfig.updateCassIdx = false
 
 	cluster.Init("default", "test", time.Now(), "http", 6060)
+	isthisok()
 }
 
 func initForTests(c *CasIdx) error {
