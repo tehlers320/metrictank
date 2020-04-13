@@ -480,13 +480,12 @@ func (c *CasIdx) ArchiveDefs(defs []schema.MetricDefinition) (int, error) {
 
 func (c *CasIdx) processWriteQueue() {
 	defer c.wg.Done()
-
+	maxAttempts := 5
 	var success bool
-	var attempts int
 	var err error
 	var req writeReq
 	qry := fmt.Sprintf("INSERT INTO %s (id, orgid, partition, name, interval, unit, mtype, tags, lastupdate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", c.Config.Table)
-	for {
+	for attempts := 0; attempts < maxAttempts; attempts++ {
 		select {
 		case req = <-c.writeQueue:
 			if err != nil {
